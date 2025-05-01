@@ -6,7 +6,7 @@ from datetime import datetime
 import time
 import threading
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='docs')
 
 # Configuration file path
 CONFIG_FILE = 'devices.json'
@@ -35,7 +35,72 @@ def update_device_statuses():
             device['status'] = check_device_status(device)
             device['last_checked'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         save_devices(devices)
+        generate_static_html(devices)  # Generate static HTML after each update
         time.sleep(30)  # Update every 30 seconds
+
+def generate_static_html(devices):
+    html_content = f"""
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Network Monitoring Dashboard</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+            .status-online {{ color: #28a745; }}
+            .status-offline {{ color: #dc3545; }}
+            .table-container {{ margin: 20px; }}
+            .header {{ 
+                background-color: #343a40;
+                color: white;
+                padding: 20px;
+                margin-bottom: 20px;
+            }}
+            .last-checked {{ font-size: 0.8em; color: #6c757d; }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <div class="container">
+                <h1>Network Monitoring Dashboard</h1>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="table-container">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Device Name</th>
+                            <th>Type</th>
+                            <th>IP Address</th>
+                            <th>Status</th>
+                            <th>Last Checked</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {''.join([
+                            f'''
+                            <tr>
+                                <td>{device['name']}</td>
+                                <td>{device['type']}</td>
+                                <td>{device['ip']}</td>
+                                <td class="status-{device['status'].lower()}">{device['status']}</td>
+                                <td class="last-checked">{device['last_checked']}</td>
+                            </tr>
+                            ''' for device in devices
+                        ])}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+    
+    with open('docs/index.html', 'w') as f:
+        f.write(html_content)
 
 @app.route('/')
 def index():
@@ -66,6 +131,7 @@ def add_device():
     })
     
     save_devices(devices)
+    generate_static_html(devices)  # Generate static HTML after adding device
     return jsonify({'success': True})
 
 @app.route('/api/delete_device', methods=['POST'])
@@ -77,6 +143,7 @@ def delete_device():
     devices = [device for device in devices if device['ip'] != data['ip']]
     
     save_devices(devices)
+    generate_static_html(devices)  # Generate static HTML after deleting device
     return jsonify({'success': True})
 
 if __name__ == '__main__':
@@ -87,5 +154,6 @@ if __name__ == '__main__':
     # Create empty devices.json if it doesn't exist
     if not os.path.exists(CONFIG_FILE):
         save_devices([])
+        generate_static_html([])  # Generate initial static HTML
     
-    app.run(debug=True, port=5002) 
+    app.run(debug=True, port=5003) 
