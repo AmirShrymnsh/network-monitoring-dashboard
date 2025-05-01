@@ -58,6 +58,12 @@ def generate_static_html(devices):
                 margin-bottom: 20px;
             }}
             .last-checked {{ font-size: 0.8em; color: #6c757d; }}
+            .add-device-form {{
+                margin: 20px;
+                padding: 20px;
+                border: 1px solid #dee2e6;
+                border-radius: 5px;
+            }}
         </style>
     </head>
     <body>
@@ -68,6 +74,33 @@ def generate_static_html(devices):
         </div>
 
         <div class="container">
+            <div class="add-device-form">
+                <h3>Add New Device</h3>
+                <form id="addDeviceForm" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="deviceName" class="form-label">Device Name</label>
+                        <input type="text" class="form-control" id="deviceName" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="deviceIP" class="form-label">IP Address</label>
+                        <input type="text" class="form-control" id="deviceIP" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="deviceType" class="form-label">Device Type</label>
+                        <select class="form-select" id="deviceType" required>
+                            <option value="router">Router</option>
+                            <option value="server">Server</option>
+                            <option value="printer">Printer</option>
+                            <option value="computer">Computer</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Add Device</button>
+                    </div>
+                </form>
+            </div>
+
             <div class="table-container">
                 <table class="table table-striped">
                     <thead>
@@ -77,9 +110,10 @@ def generate_static_html(devices):
                             <th>IP Address</th>
                             <th>Status</th>
                             <th>Last Checked</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="deviceTable">
                         {''.join([
                             f'''
                             <tr>
@@ -88,6 +122,9 @@ def generate_static_html(devices):
                                 <td>{device['ip']}</td>
                                 <td class="status-{device['status'].lower()}">{device['status']}</td>
                                 <td class="last-checked">{device['last_checked']}</td>
+                                <td>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteDevice('{device['ip']}')">Delete</button>
+                                </td>
                             </tr>
                             ''' for device in devices
                         ])}
@@ -95,6 +132,52 @@ def generate_static_html(devices):
                 </table>
             </div>
         </div>
+
+        <script>
+            function deleteDevice(ip) {{
+                if (confirm('Are you sure you want to delete this device?')) {{
+                    fetch('/api/delete_device', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{ ip: ip }})
+                    }})
+                    .then(response => response.json())
+                    .then(data => {{
+                        if (data.success) {{
+                            location.reload();
+                        }}
+                    }});
+                }}
+            }}
+
+            document.getElementById('addDeviceForm').addEventListener('submit', function(e) {{
+                e.preventDefault();
+                
+                const deviceData = {{
+                    name: document.getElementById('deviceName').value,
+                    ip: document.getElementById('deviceIP').value,
+                    type: document.getElementById('deviceType').value
+                }};
+
+                fetch('/api/add_device', {{
+                    method: 'POST',
+                    headers: {{
+                        'Content-Type': 'application/json',
+                    }},
+                    body: JSON.stringify(deviceData)
+                }})
+                .then(response => response.json())
+                .then(data => {{
+                    if (data.success) {{
+                        location.reload();
+                    }} else {{
+                        alert(data.message || 'Error adding device');
+                    }}
+                }});
+            }});
+        </script>
     </body>
     </html>
     """
